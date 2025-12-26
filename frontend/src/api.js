@@ -112,4 +112,50 @@ export const api = {
       }
     }
   },
+
+  /**
+   * Get cluster status.
+   */
+  async getClusterStatus() {
+    const response = await fetch(`${API_BASE}/api/cluster/status`);
+    if (!response.ok) {
+      throw new Error('Failed to get cluster status');
+    }
+    return response.json();
+  },
+
+  /**
+   * Run health check on all nodes.
+   */
+  async runHealthCheck() {
+    const response = await fetch(`${API_BASE}/api/cluster/health-check`, {
+      method: 'POST',
+    });
+    if (!response.ok) {
+      throw new Error('Failed to run health check');
+    }
+    return response.json();
+  },
+
+  /**
+   * List all configured nodes.
+   */
+  async listNodes() {
+    const response = await fetch(`${API_BASE}/api/cluster/nodes`);
+    if (!response.ok) {
+      throw new Error('Failed to list nodes');
+    }
+    return response.json();
+  },
+
+  /**
+   * List all available models.
+   */
+  async listModels() {
+    const response = await fetch(`${API_BASE}/api/cluster/models`);
+    if (!response.ok) {
+      throw new Error('Failed to list models');
+    }
+    return response.json();
+  },
 };

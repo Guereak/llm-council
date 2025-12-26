@@ -32,6 +32,7 @@ Whilst the system design and most of the backend was developped without Generati
 
 For the backend work, method descriptions were AI generated as well as some error handling for sensitive functions. All code we wrote manually was evaluated by either Cursor agents or GitHub's copilot agent (automatic when reviewing PRs) to ensure strong code quality and ease of development.
 
+Nevertheless, all AI-written code has been thouroughly reviewed. 
 
 
 

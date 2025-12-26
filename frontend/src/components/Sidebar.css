@@ -36,6 +36,37 @@
   border-color: #357abd;
 }
 
+.sidebar-nav {
+  padding: 8px;
+  border-bottom: 1px solid #e0e0e0;
+  display: flex;
+  gap: 4px;
+}
+
+.nav-btn {
+  flex: 1;
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  color: #666;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.nav-btn:hover {
+  background: #f0f0f0;
+  border-color: #d0d0d0;
+}
+
+.nav-btn.active {
+  background: #4a90e2;
+  border-color: #4a90e2;
+  color: #fff;
+}
+
 .conversation-list {
   flex: 1;
   overflow-y: auto;

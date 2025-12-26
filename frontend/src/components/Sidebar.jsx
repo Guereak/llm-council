@@ -6,6 +6,8 @@ export default function Sidebar({
   currentConversationId,
   onSelectConversation,
   onNewConversation,
+  currentView,
+  onViewChange,
 }) {
   return (
     <div className="sidebar">
@@ -16,6 +18,22 @@ export default function Sidebar({
         </button>
       </div>
 
+      <div className="sidebar-nav">
+        <button
+          className={`nav-btn ${currentView === 'chat' ? 'active' : ''}`}
+          onClick={() => onViewChange('chat')}
+        >
+          💬 Chat
+        </button>
+        <button
+          className={`nav-btn ${currentView === 'health' ? 'active' : ''}`}
+          onClick={() => onViewChange('health')}
+        >
+          ❤️ Health Monitor
+        </button>
+      </div>
+
+      {currentView === 'chat' && (
       <div className="conversation-list">
         {conversations.length === 0 ? (
           <div className="no-conversations">No conversations yet</div>
@@ -38,6 +56,7 @@ export default function Sidebar({
           ))
         )}
       </div>
+      )}
     </div>
   );
 }
