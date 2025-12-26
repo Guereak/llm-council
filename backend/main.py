@@ -4,13 +4,15 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import uuid
 import json
 import asyncio
 
 from . import storage
 from .council import run_full_council, generate_conversation_title, stage1_collect_responses, stage2_collect_rankings, stage3_synthesize_final, calculate_aggregate_rankings
+from .distributed import get_distributed_client
+from .config import get_enabled_nodes, get_all_council_models, get_chairman_config
 
 app = FastAPI(title="LLM Council API")
 
@@ -53,7 +55,134 @@ class Conversation(BaseModel):
 @app.get("/")
 async def root():
     """Health check endpoint."""
-    return {"status": "ok", "service": "LLM Council API"}
+    nodes = get_enabled_nodes()
+    return {
+        "status": "ok",
+        "service": "LLM Council API - Distributed",
+        "nodes_configured": len(nodes),
+        "models_available": len(get_all_council_models()),
+    }
+
+
+# =============================================================================
+# CLUSTER MANAGEMENT ENDPOINTS
+# =============================================================================
+
+@app.get("/api/cluster/status")
+async def get_cluster_status():
+    """
+    Get the current status of the distributed LLM cluster.
+    
+    Returns information about all nodes, their health status,
+    and available models.
+    """
+    client = get_distributed_client()
+    return client.get_cluster_status()
+
+
+@app.post("/api/cluster/health-check")
+async def run_cluster_health_check():
+    """
+    Run a health check on all configured nodes.
+    
+    This will ping each node and verify what models are available.
+    """
+    client = get_distributed_client()
+    health_results = await client.check_all_nodes_health()
+    
+    # Convert to serializable format
+    results = {}
+    for name, health in health_results.items():
+        results[name] = {
+            "is_healthy": health.is_healthy,
+            "last_check": health.last_check.isoformat() if health.last_check else None,
+            "last_error": health.last_error,
+            "consecutive_failures": health.consecutive_failures,
+            "available_models": health.available_models,
+        }
+    
+    healthy_count = sum(1 for h in health_results.values() if h.is_healthy)
+    
+    return {
+        "status": "ok" if healthy_count > 0 else "degraded",
+        "healthy_nodes": healthy_count,
+        "total_nodes": len(health_results),
+        "nodes": results,
+    }
+
+
+@app.get("/api/cluster/nodes")
+async def list_nodes():
+    """List all configured nodes with their details."""
+    nodes = get_enabled_nodes()
+    return {
+        "nodes": [node.to_dict() for node in nodes],
+        "total": len(nodes),
+    }
+
+
+@app.get("/api/cluster/models")
+async def list_models():
+    """List all available models across all nodes."""
+    models = get_all_council_models()
+    chairman = get_chairman_config()
+    
+    return {
+        "council_models": models,
+        "chairman": chairman,
+        "total_models": len(models),
+    }
+
+
+class TestNodeRequest(BaseModel):
+    """Request to test a specific node."""
+    node_name: str
+    model: Optional[str] = None
+    prompt: str = "Hello! Please respond with a brief greeting."
+
+
+@app.post("/api/cluster/test-node")
+async def test_node(request: TestNodeRequest):
+    """
+    Test a specific node by sending a simple prompt.
+    
+    Useful for debugging and verifying node connectivity.
+    """
+    client = get_distributed_client()
+    nodes = get_enabled_nodes()
+    
+    # Find the requested node
+    target_node = None
+    for node in nodes:
+        if node.name == request.node_name:
+            target_node = node
+            break
+    
+    if target_node is None:
+        raise HTTPException(status_code=404, detail=f"Node '{request.node_name}' not found")
+    
+    # Use specified model or first available
+    model = request.model or (target_node.models[0] if target_node.models else None)
+    if model is None:
+        raise HTTPException(status_code=400, detail="No model specified and node has no configured models")
+    
+    # Query the model
+    response = await client.query_model(
+        model=model,
+        messages=[{"role": "user", "content": request.prompt}],
+        node_url=target_node.url,
+    )
+    
+    if response is None:
+        raise HTTPException(status_code=503, detail="Failed to get response from node")
+    
+    return {
+        "node": target_node.name,
+        "model": model,
+        "prompt": request.prompt,
+        "response": response.get("content", ""),
+        "status": "ok",
+    }
 
 
 @app.get("/api/conversations", response_model=List[ConversationMetadata])
