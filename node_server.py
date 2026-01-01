@@ -292,17 +292,17 @@ async def generate(request: Dict[str, Any]):
 # =============================================================================
 
 def main():
+    # Update globals
+    global NODE_NAME, NODE_PORT, NODE_API_KEY
+
     parser = argparse.ArgumentParser(description="LLM Council Node Server")
     parser.add_argument("--port", type=int, default=NODE_PORT, help="Port to run on")
     parser.add_argument("--name", type=str, default=NODE_NAME, help="Node name")
     parser.add_argument("--api-key", type=str, default=NODE_API_KEY, help="API key for auth")
     parser.add_argument("--models", nargs="+", help="Models to advertise")
     parser.add_argument("--host", type=str, default="0.0.0.0", help="Host to bind to")
-    
+
     args = parser.parse_args()
-    
-    # Update globals
-    global NODE_NAME, NODE_PORT, NODE_API_KEY
     NODE_NAME = args.name
     NODE_PORT = args.port
     NODE_API_KEY = args.api_key
