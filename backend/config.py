@@ -14,12 +14,13 @@ class LLMNode:
     """Represents a remote LLM node in the distributed council."""
     name: str                          # Human-readable node name
     host: str                          # Hostname or IP address
-    port: int = 11434                  # Ollama port (default: 11434)
+    port: int = 8080                   # Node server port (default: 8080)
     models: List[str] = field(default_factory=list)  # Models available on this node
     is_chairman: bool = False          # Whether this node hosts the chairman model
     chairman_model: Optional[str] = None  # Specific model to use as chairman (if is_chairman)
     enabled: bool = True               # Whether this node is active
     timeout: float = 120.0             # Request timeout for this node
+    api_key: Optional[str] = None      # API key for node authentication (optional)
     
     @property
     def url(self) -> str:
@@ -37,6 +38,7 @@ class LLMNode:
             "chairman_model": self.chairman_model,
             "enabled": self.enabled,
             "timeout": self.timeout,
+            "api_key": self.api_key,
         }
     
     @classmethod
@@ -45,12 +47,13 @@ class LLMNode:
         return cls(
             name=data["name"],
             host=data["host"],
-            port=data.get("port", 11434),
+            port=data.get("port", 8080),
             models=data.get("models", []),
             is_chairman=data.get("is_chairman", False),
             chairman_model=data.get("chairman_model"),
             enabled=data.get("enabled", True),
             timeout=data.get("timeout", 120.0),
+            api_key=data.get("api_key"),
         )
 
 
@@ -89,10 +92,17 @@ else:
         LLMNode(
             name="local",
             host="localhost",
-            port=11434,
-            models=["qwen3:4b", "gemma3:4b", "mistral"],  # Added mistral
+            port=8080,  # node_server.py default port
+            models=["qwen3:4b", "gemma3:4b", "mistral"],
             is_chairman=True,
             chairman_model="mistral",
+            enabled=True,
+        ),
+        LLMNode(
+            name="XPS",
+            host="192.168.1.22",
+            port=8080,
+            models=["phi3"],
             enabled=True,
         ),
         # Example remote nodes (uncomment and configure for distributed setup):
