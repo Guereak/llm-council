@@ -1,26 +1,209 @@
 """Configuration for the LLM Council."""
 
 import os
+import json
+from typing import List, Dict, Any, Optional
+from dataclasses import dataclass, field
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# OpenRouter API key
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
-# Council members - list of OpenRouter model identifiers
-COUNCIL_MODELS = [
-    "openai/gpt-5.1",
-    "google/gemini-3-pro-preview",
-    "anthropic/claude-sonnet-4.5",
-    "x-ai/grok-4",
-]
+@dataclass
+class LLMNode:
+    """Represents a remote LLM node in the distributed council."""
+    name: str                          # Human-readable node name
+    host: str                          # Hostname or IP address
+    port: int = 8080                   # Node server port (default: 8080)
+    models: List[str] = field(default_factory=list)  # Models available on this node
+    is_chairman: bool = False          # Whether this node hosts the chairman model
+    chairman_model: Optional[str] = None  # Specific model to use as chairman (if is_chairman)
+    enabled: bool = True               # Whether this node is active
+    timeout: float = 120.0             # Request timeout for this node
+    api_key: Optional[str] = None      # API key for node authentication (optional)
+    
+    @property
+    def url(self) -> str:
+        """Get the full URL for this node."""
+        return f"http://{self.host}:{self.port}"
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        return {
+            "name": self.name,
+            "host": self.host,
+            "port": self.port,
+            "models": self.models,
+            "is_chairman": self.is_chairman,
+            "chairman_model": self.chairman_model,
+            "enabled": self.enabled,
+            "timeout": self.timeout,
+            "api_key": self.api_key,
+        }
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "LLMNode":
+        """Create from dictionary."""
+        return cls(
+            name=data["name"],
+            host=data["host"],
+            port=data.get("port", 8080),
+            models=data.get("models", []),
+            is_chairman=data.get("is_chairman", False),
+            chairman_model=data.get("chairman_model"),
+            enabled=data.get("enabled", True),
+            timeout=data.get("timeout", 120.0),
+            api_key=data.get("api_key"),
+        )
 
-# Chairman model - synthesizes final response
-CHAIRMAN_MODEL = "google/gemini-3-pro-preview"
 
-# OpenRouter API endpoint
-OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
+# =============================================================================
+# DISTRIBUTED NODE CONFIGURATION
+# =============================================================================
+# 
+# Configure your LLM council nodes here. Each node represents a machine
+# running Ollama with one or more models.
+#
+# For a single-machine setup, just configure one node with localhost.
+# For distributed setup, add multiple nodes with their network addresses.
+#
+# Example distributed setup:
+#   - Node 1 (192.168.1.10): llama3.2, gemma2
+#   - Node 2 (192.168.1.11): mistral, phi3  
+#   - Node 3 (192.168.1.12): qwen2.5 (Chairman)
+#
+# =============================================================================
+
+# Load nodes from environment variable (JSON) or use defaults
+_nodes_json = os.getenv("LLM_COUNCIL_NODES")
+
+if _nodes_json:
+    # Parse nodes from environment variable
+    try:
+        _nodes_data = json.loads(_nodes_json)
+        COUNCIL_NODES: List[LLMNode] = [LLMNode.from_dict(n) for n in _nodes_data]
+    except json.JSONDecodeError as e:
+        print(f"Warning: Failed to parse LLM_COUNCIL_NODES: {e}")
+        COUNCIL_NODES = []
+else:
+    # Default configuration - single localhost node
+    # Modify this for your distributed setup
+    COUNCIL_NODES: List[LLMNode] = [
+        LLMNode(
+            name="local",
+            host="localhost",
+            port=8080,  # node_server.py default port
+            models=["qwen3:4b", "gemma3:4b", "mistral"],
+            is_chairman=True,
+            chairman_model="mistral",
+            enabled=True,
+        ),
+        LLMNode(
+            name="XPS",
+            host="192.168.1.22",
+            port=8080,
+            models=["phi3"],
+            enabled=True,
+        ),
+        # Example remote nodes (uncomment and configure for distributed setup):
+        # LLMNode(
+        #     name="gpu-server-1",
+        #     host="192.168.1.10",
+        #     port=11434,
+        #     models=["llama3.2", "gemma2"],
+        #     enabled=True,
+        # ),
+        # LLMNode(
+        #     name="gpu-server-2",
+        #     host="192.168.1.11",
+        #     port=11434,
+        #     models=["mistral", "phi3"],
+        #     is_chairman=True,
+        #     chairman_model="mistral",
+        #     enabled=True,
+        # ),
+    ]
+
+
+def get_enabled_nodes() -> List[LLMNode]:
+    """Get all enabled nodes."""
+    return [node for node in COUNCIL_NODES if node.enabled]
+
+
+def get_all_council_models() -> List[Dict[str, Any]]:
+    """
+    Get all council models across all enabled nodes.
+    
+    Returns:
+        List of dicts with 'model', 'node_name', 'node_url' keys
+    """
+    models = []
+    for node in get_enabled_nodes():
+        for model in node.models:
+            models.append({
+                "model": model,
+                "node_name": node.name,
+                "node_url": node.url,
+                "timeout": node.timeout,
+            })
+    return models
+
+
+def get_chairman_config() -> Optional[Dict[str, Any]]:
+    """
+    Get the chairman model configuration.
+    
+    Returns:
+        Dict with 'model', 'node_name', 'node_url' keys, or None if no chairman configured
+    """
+    for node in get_enabled_nodes():
+        if node.is_chairman and node.chairman_model:
+            return {
+                "model": node.chairman_model,
+                "node_name": node.name,
+                "node_url": node.url,
+                "timeout": node.timeout,
+            }
+    
+    # Fallback: use first model from first node as chairman
+    models = get_all_council_models()
+    if models:
+        return models[0]
+    
+    return None
+
+
+# =============================================================================
+# LEGACY COMPATIBILITY
+# =============================================================================
+# These are kept for backward compatibility with non-distributed code
+
+# Build COUNCIL_MODELS list from all nodes
+COUNCIL_MODELS = [m["model"] for m in get_all_council_models()]
+
+# Get chairman model
+_chairman = get_chairman_config()
+CHAIRMAN_MODEL = _chairman["model"] if _chairman else "mistral"
+
+# Legacy Ollama URL (for single-node setups)
+# OLLAMA_API_URL = os.getenv("OLLAMA_API_URL", "http://localhost:11434")
 
 # Data directory for conversation storage
 DATA_DIR = "data/conversations"
+
+
+# =============================================================================
+# DISTRIBUTED SETTINGS
+# =============================================================================
+
+# Health check interval (seconds) - how often to check node availability
+HEALTH_CHECK_INTERVAL = int(os.getenv("HEALTH_CHECK_INTERVAL", "30"))
+
+# Maximum retries for failed requests
+MAX_RETRIES = int(os.getenv("MAX_RETRIES", "2"))
+
+# Retry delay (seconds)
+RETRY_DELAY = float(os.getenv("RETRY_DELAY", "1.0"))
+
+# Enable verbose logging for distributed operations
+DISTRIBUTED_DEBUG = os.getenv("DISTRIBUTED_DEBUG", "false").lower() == "true"

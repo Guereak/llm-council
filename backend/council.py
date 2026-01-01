@@ -1,8 +1,8 @@
 """3-stage LLM Council orchestration."""
 
 from typing import List, Dict, Any, Tuple
-from .openrouter import query_models_parallel, query_model
-from .config import COUNCIL_MODELS, CHAIRMAN_MODEL
+from .distributed import query_models_parallel, query_model, get_distributed_client
+from .config import COUNCIL_MODELS, CHAIRMAN_MODEL, get_all_council_models
 
 
 async def stage1_collect_responses(user_query: str) -> List[Dict[str, Any]]:
@@ -13,12 +13,15 @@ async def stage1_collect_responses(user_query: str) -> List[Dict[str, Any]]:
         user_query: The user's question
 
     Returns:
-        List of dicts with 'model' and 'response' keys
+        List of dicts with 'model', 'response', and optionally 'node' keys
     """
     messages = [{"role": "user", "content": user_query}]
 
-    # Query all models in parallel
-    responses = await query_models_parallel(COUNCIL_MODELS, messages)
+    # Get the distributed client and query all models in parallel
+    client = get_distributed_client()
+    models_config = get_all_council_models()
+    
+    responses = await client.query_models_parallel(models_config, messages)
 
     # Format results
     stage1_results = []
@@ -26,7 +29,8 @@ async def stage1_collect_responses(user_query: str) -> List[Dict[str, Any]]:
         if response is not None:  # Only include successful responses
             stage1_results.append({
                 "model": model,
-                "response": response.get('content', '')
+                "response": response.get('content', ''),
+                "node": response.get('node', 'unknown'),  # Include which node served this
             })
 
     return stage1_results
@@ -118,7 +122,7 @@ async def stage3_synthesize_final(
     stage2_results: List[Dict[str, Any]]
 ) -> Dict[str, Any]:
     """
-    Stage 3: Chairman synthesizes final response.
+    Stage 3: Chairman synthesizes final response using the dedicated chairman node.
 
     Args:
         user_query: The original user query
@@ -126,11 +130,11 @@ async def stage3_synthesize_final(
         stage2_results: Rankings from Stage 2
 
     Returns:
-        Dict with 'model' and 'response' keys
+        Dict with 'model', 'response', and optionally 'node' keys
     """
     # Build comprehensive context for chairman
     stage1_text = "\n\n".join([
-        f"Model: {result['model']}\nResponse: {result['response']}"
+        f"Model: {result['model']} (Node: {result.get('node', 'unknown')})\nResponse: {result['response']}"
         for result in stage1_results
     ])
 
@@ -158,19 +162,22 @@ Provide a clear, well-reasoned final answer that represents the council's collec
 
     messages = [{"role": "user", "content": chairman_prompt}]
 
-    # Query the chairman model
-    response = await query_model(CHAIRMAN_MODEL, messages)
+    # Query the chairman model via the distributed client
+    client = get_distributed_client()
+    response = await client.query_chairman(messages)
 
     if response is None:
         # Fallback if chairman fails
         return {
             "model": CHAIRMAN_MODEL,
-            "response": "Error: Unable to generate final synthesis."
+            "response": "Error: Unable to generate final synthesis.",
+            "node": "error"
         }
 
     return {
-        "model": CHAIRMAN_MODEL,
-        "response": response.get('content', '')
+        "model": response.get('model', CHAIRMAN_MODEL),
+        "response": response.get('content', ''),
+        "node": response.get('node', 'unknown')
     }
 
 
@@ -274,8 +281,8 @@ Title:"""
 
     messages = [{"role": "user", "content": title_prompt}]
 
-    # Use gemini-2.5-flash for title generation (fast and cheap)
-    response = await query_model("google/gemini-2.5-flash", messages, timeout=30.0)
+    # Use the chairman model for title generation
+    response = await query_model(CHAIRMAN_MODEL, messages, timeout=30.0)
 
     if response is None:
         # Fallback to a generic title
