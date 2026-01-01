@@ -4,6 +4,8 @@
   margin: 0 auto;
   background: var(--bg-secondary);
   min-height: 100vh;
+  max-height: 100vh;
+  overflow-y: auto;
   transition: background-color 0.3s ease;
 }
 
