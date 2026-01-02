@@ -88,6 +88,7 @@
   padding: 20px;
   margin-bottom: 20px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--border-color);
 }
 
 .cluster-overview h3,
@@ -368,5 +369,27 @@
   background: var(--tag-bg);
   padding: 2px 8px;
   border-radius: 10px;
+}
+
+/* Dark mode support */
+[data-theme="dark"] .cluster-overview,
+[data-theme="dark"] .health-results,
+[data-theme="dark"] .nodes-config,
+[data-theme="dark"] .models-overview {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .node-card,
+[data-theme="dark"] .node-config-card {
+  background: var(--bg-secondary);
+}
+
+[data-theme="dark"] .node-card:hover,
+[data-theme="dark"] .node-config-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .model-item {
+  background: var(--bg-secondary);
 }
 
