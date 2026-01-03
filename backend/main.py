@@ -13,7 +13,17 @@ from . import storage
 from .council import run_full_council, generate_conversation_title, stage1_collect_responses, stage2_collect_rankings, stage3_synthesize_final, calculate_aggregate_rankings
 from .code_council import run_code_council, generate_initial_code, review_code_structured, refine_code, generate_tests, synthesize_final_code
 from .distributed import get_distributed_client
-from .config import get_enabled_nodes, get_all_council_models, get_chairman_config
+from .config import (
+    get_enabled_nodes, 
+    get_all_council_models, 
+    get_chairman_config, 
+    get_all_nodes,
+    add_node,
+    update_node,
+    remove_node,
+    get_node,
+    LLMNode
+)
 
 app = FastAPI(title="LLM Council API")
 
@@ -123,11 +133,117 @@ async def run_cluster_health_check():
 @app.get("/api/cluster/nodes")
 async def list_nodes():
     """List all configured nodes with their details."""
-    nodes = get_enabled_nodes()
+    nodes = get_all_nodes()
     return {
         "nodes": [node.to_dict() for node in nodes],
         "total": len(nodes),
     }
+
+
+class CreateNodeRequest(BaseModel):
+    """Request to create a new node."""
+    name: str
+    host: str
+    port: int = 8080
+    models: List[str] = []
+    is_chairman: bool = False
+    chairman_model: Optional[str] = None
+    enabled: bool = True
+    timeout: float = 120.0
+    api_key: Optional[str] = None
+
+
+@app.post("/api/cluster/nodes")
+async def create_node_endpoint(request: CreateNodeRequest):
+    """Create a new node (in-memory, session only)."""
+    try:
+        node = LLMNode(
+            name=request.name,
+            host=request.host,
+            port=request.port,
+            models=request.models,
+            is_chairman=request.is_chairman,
+            chairman_model=request.chairman_model,
+            enabled=request.enabled,
+            timeout=request.timeout,
+            api_key=request.api_key,
+        )
+        
+        add_node(node)
+        
+        return {
+            "status": "ok",
+            "message": f"Node '{request.name}' created successfully (session only)",
+            "node": node.to_dict(),
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create node: {str(e)}")
+
+
+class UpdateNodeRequest(BaseModel):
+    """Request to update a node."""
+    name: Optional[str] = None
+    host: Optional[str] = None
+    port: Optional[int] = None
+    models: Optional[List[str]] = None
+    is_chairman: Optional[bool] = None
+    chairman_model: Optional[str] = None
+    enabled: Optional[bool] = None
+    timeout: Optional[float] = None
+    api_key: Optional[str] = None
+
+
+@app.put("/api/cluster/nodes/{node_name}")
+async def update_node_endpoint(node_name: str, request: UpdateNodeRequest):
+    """Update an existing node (in-memory, session only)."""
+    try:
+        # Get the existing node
+        existing_node = get_node(node_name)
+        if existing_node is None:
+            raise HTTPException(status_code=404, detail=f"Node '{node_name}' not found")
+        
+        # Update only provided fields
+        updated_node_obj = LLMNode(
+            name=request.name if request.name is not None else existing_node.name,
+            host=request.host if request.host is not None else existing_node.host,
+            port=request.port if request.port is not None else existing_node.port,
+            models=request.models if request.models is not None else existing_node.models,
+            is_chairman=request.is_chairman if request.is_chairman is not None else existing_node.is_chairman,
+            chairman_model=request.chairman_model if request.chairman_model is not None else existing_node.chairman_model,
+            enabled=request.enabled if request.enabled is not None else existing_node.enabled,
+            timeout=request.timeout if request.timeout is not None else existing_node.timeout,
+            api_key=request.api_key if request.api_key is not None else existing_node.api_key,
+        )
+        
+        update_node(node_name, updated_node_obj)
+        
+        return {
+            "status": "ok",
+            "message": f"Node '{node_name}' updated successfully (session only)",
+            "node": updated_node_obj.to_dict(),
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update node: {str(e)}")
+
+
+@app.delete("/api/cluster/nodes/{node_name}")
+async def delete_node_endpoint(node_name: str):
+    """Delete a node (in-memory, session only)."""
+    try:
+        remove_node(node_name)
+        
+        return {
+            "status": "ok",
+            "message": f"Node '{node_name}' deleted successfully (session only)",
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete node: {str(e)}")
 
 
 @app.get("/api/cluster/models")

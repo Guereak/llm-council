@@ -159,6 +159,56 @@ export const api = {
     return response.json();
   },
 
+  /**
+   * Create a new node.
+   */
+  async createNode(nodeData) {
+    const response = await fetch(`${API_BASE}/api/cluster/nodes`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(nodeData),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to create node');
+    }
+    return response.json();
+  },
+
+  /**
+   * Update an existing node.
+   */
+  async updateNode(nodeName, nodeData) {
+    const response = await fetch(`${API_BASE}/api/cluster/nodes/${nodeName}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(nodeData),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to update node');
+    }
+    return response.json();
+  },
+
+  /**
+   * Delete a node.
+   */
+  async deleteNode(nodeName) {
+    const response = await fetch(`${API_BASE}/api/cluster/nodes/${nodeName}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to delete node');
+    }
+    return response.json();
+  },
+
   // =============================================================================
   // CODE CONVERSATION METHODS
   // =============================================================================
