@@ -226,9 +226,6 @@ COUNCIL_MODELS = [m["model"] for m in get_all_council_models()]
 _chairman = get_chairman_config()
 CHAIRMAN_MODEL = _chairman["model"] if _chairman else "mistral"
 
-# Legacy Ollama URL (for single-node setups)
-# OLLAMA_API_URL = os.getenv("OLLAMA_API_URL", "http://localhost:11434")
-
 # Data directory for conversation storage
 DATA_DIR = "data/conversations"
 
