@@ -134,13 +134,27 @@ export default function HealthMonitor() {
   const handleSaveNode = async () => {
     try {
       setError(null);
-      
+
+      // Validate required fields
+      if (!nodeFormData.name || !nodeFormData.host || !nodeFormData.port) {
+        setError('Name, host, and port are required');
+        return;
+      }
+
+      // Validate port is a positive number
+      if (nodeFormData.port <= 0 || nodeFormData.port > 65535) {
+        setError('Port must be between 1 and 65535');
+        return;
+      }
+
       // Prepare node data
+      const modelsArray = Array.isArray(nodeFormData.models)
+        ? nodeFormData.models
+        : (nodeFormData.models || '').split(',').map(m => m.trim()).filter(m => m);
+
       const nodeData = {
         ...nodeFormData,
-        models: Array.isArray(nodeFormData.models) 
-          ? nodeFormData.models 
-          : nodeFormData.models.split(',').map(m => m.trim()).filter(m => m),
+        models: modelsArray,
         chairman_model: nodeFormData.chairman_model || null,
         api_key: nodeFormData.api_key || null,
       };
@@ -198,7 +212,14 @@ export default function HealthMonitor() {
 
       {error && (
         <div className="health-error">
-          Error: {error}
+          <span>Error: {error}</span>
+          <button
+            className="error-dismiss"
+            onClick={() => setError(null)}
+            aria-label="Dismiss error"
+          >
+            ×
+          </button>
         </div>
       )}
 
@@ -318,6 +339,9 @@ export default function HealthMonitor() {
             + Add Node
           </button>
         </div>
+        <div className="config-notice">
+          ⚠️ Node changes are session-only and will be lost on server restart. Set LLM_COUNCIL_NODES environment variable for persistence.
+        </div>
         {nodes.length > 0 ? (
           <div className="nodes-list">
             {nodes.map((node) => (
@@ -435,7 +459,6 @@ export default function HealthMonitor() {
                   value={nodeFormData.name}
                   onChange={(e) => handleFormChange('name', e.target.value)}
                   placeholder="e.g., local, gpu-server-1"
-                  disabled={!!editingNode}
                 />
               </div>
               <div className="form-group">

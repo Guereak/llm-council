@@ -57,10 +57,19 @@ class DistributedLLMClient:
             if node.api_key:
                 headers["X-API-Key"] = node.api_key
 
+            # Configure timeout with explicit values for connection and read
+            # This ensures that health checks don't hang on unreachable nodes
+            timeout = httpx.Timeout(
+                connect=10.0,  # 10 seconds to establish connection
+                read=node.timeout,  # Use node's configured timeout for reading
+                write=10.0,  # 10 seconds for write operations
+                pool=5.0,  # 5 seconds to acquire connection from pool
+            )
+
             self._http_clients[node.name] = httpx.AsyncClient(
                 base_url=node.url,
                 headers=headers,
-                timeout=node.timeout,
+                timeout=timeout,
             )
 
             if DISTRIBUTED_DEBUG:
@@ -83,8 +92,15 @@ class DistributedLLMClient:
         try:
             client = self._get_client_for_node(node)
 
-            # Call the /health endpoint
-            response = await client.get("/health")
+            # Call the /health endpoint with a short timeout (10 seconds total)
+            # This prevents health checks from hanging on unreachable nodes
+            health_timeout = httpx.Timeout(
+                connect=5.0,  # 5 seconds to connect for health checks
+                read=5.0,     # 5 seconds to read response
+                write=5.0,
+                pool=2.0,
+            )
+            response = await client.get("/health", timeout=health_timeout)
             response.raise_for_status()
 
             data = response.json()
@@ -116,6 +132,20 @@ class DistributedLLMClient:
     async def check_all_nodes_health(self) -> Dict[str, NodeHealth]:
         """Check health of all enabled nodes in parallel."""
         nodes = get_enabled_nodes()
+
+        # Get current node names to clean up stale entries
+        current_node_names = {node.name for node in nodes}
+
+        # Remove health data and HTTP clients for nodes that no longer exist in config
+        stale_nodes = set(self._node_health.keys()) - current_node_names
+        for stale_node in stale_nodes:
+            del self._node_health[stale_node]
+            # Also close and remove HTTP client for deleted node
+            if stale_node in self._http_clients:
+                await self._http_clients[stale_node].aclose()
+                del self._http_clients[stale_node]
+            if DISTRIBUTED_DEBUG:
+                print(f"[Distributed] Removed stale health data for deleted node '{stale_node}'")
 
         # Check all nodes in parallel
         tasks = [self.check_node_health(node) for node in nodes]
@@ -207,10 +237,18 @@ class DistributedLLMClient:
             if api_key:
                 headers["X-API-Key"] = api_key
 
+            # Create timeout object with proper configuration
+            client_timeout = httpx.Timeout(
+                connect=10.0,
+                read=timeout,
+                write=10.0,
+                pool=5.0,
+            )
+
             client = httpx.AsyncClient(
                 base_url=node_url,
                 headers=headers,
-                timeout=timeout,
+                timeout=client_timeout,
             )
             node_name = node_url
         else:

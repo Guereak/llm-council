@@ -13,18 +13,7 @@ async def generate_initial_code(
     language: Optional[str] = None,
     framework: Optional[str] = None
 ) -> List[Dict[str, Any]]:
-    """
-    Stage 1: Generate initial code from specification.
-    
-    Args:
-        specification: Code requirements/specification
-        language: Programming language (optional, will be inferred if not provided)
-        framework: Framework/library to use (optional)
-    
-    Returns:
-        List of dicts with 'model', 'code', 'node' keys
-    """
-    # Build code generation prompt
+    """ Stage 1: Generate initial code from specification """
     language_part = f"Programming Language: {language}\n" if language else ""
     framework_part = f"Framework/Library: {framework}\n" if framework else ""
     
@@ -45,18 +34,17 @@ Provide ONLY the code without any explanations or markdown formatting. Start dir
 
     messages = [{"role": "user", "content": code_prompt}]
     
-    # Get the distributed client and query all models in parallel
+    # Get client and query the models
     client = get_distributed_client()
     models_config = get_all_council_models()
     
     responses = await client.query_models_parallel(models_config, messages)
     
-    # Format results
+    # Results formatting
     code_results = []
     for model, response in responses.items():
         if response is not None:
             code_content = response.get('content', '').strip()
-            # Remove markdown code blocks if present
             code_content = re.sub(r'^```[\w]*\n', '', code_content, flags=re.MULTILINE)
             code_content = re.sub(r'\n```$', '', code_content, flags=re.MULTILINE)
             code_content = code_content.strip()
@@ -74,20 +62,17 @@ Provide ONLY the code without any explanations or markdown formatting. Start dir
 async def review_code_structured(
     code_submissions: List[Dict[str, Any]],
     specification: str
-) -> List[Dict[str, Any]]:
-    """
-    Stage 2: Each model reviews code with structured feedback.
-    
-    Args:
-        code_submissions: List of code submissions from Stage 1
-        specification: Original specification
-    
-    Returns:
-        List of review dicts with structured feedback
-    """
+) -> Tuple[List[Dict[str, Any]], Dict[str, str]]:
+    """ Stage 2: Each model reviews code with structured feedback """
     # Create anonymized labels for code submissions
     labels = [chr(65 + i) for i in range(len(code_submissions))]  # A, B, C, ...
-    
+
+    # Create label to model mapping for deobfuscation
+    label_to_model = {
+        label: submission['model']
+        for label, submission in zip(labels, code_submissions)
+    }
+
     # Build code review prompt
     code_texts = "\n\n".join([
         f"Code Submission {label}:\n```\n{submission['code']}\n```"
@@ -135,7 +120,7 @@ FINAL RANKING:
     
     responses = await client.query_models_parallel(models_config, messages)
     
-    # Parse structured reviews
+    # Parse reviews
     review_results = []
     for model, response in responses.items():
         if response is not None:
@@ -148,21 +133,12 @@ FINAL RANKING:
                 "parsed_review": parsed_review,
                 "node": response.get('node', 'unknown'),
             })
-    
-    return review_results
 
+    return review_results, label_to_model
 
+# TODO
 def parse_structured_review(review_text: str, labels: List[str]) -> Dict[str, Any]:
-    """
-    Parse structured review from LLM response.
-    
-    Args:
-        review_text: Full review text from LLM
-        labels: List of submission labels (A, B, C, ...)
-    
-    Returns:
-        Dict with parsed review structure
-    """
+    """ Parse structured review from LLM response """
     parsed = {
         "submissions": {},
         "ranking": []
@@ -172,7 +148,6 @@ def parse_structured_review(review_text: str, labels: List[str]) -> Dict[str, An
     for label in labels:
         submission_key = f"Code Submission {label}"
         if submission_key in review_text:
-            # Extract section for this submission
             pattern = rf"{re.escape(submission_key)}:(.*?)(?=Code Submission [A-Z]|FINAL RANKING:|$)"
             match = re.search(pattern, review_text, re.DOTALL)
             if match:
@@ -230,14 +205,13 @@ async def refine_code(
         submission_label = None
         
         # Find which label corresponds to this submission
-        # We'll match by model name for now (simplified)
         for label, submission_data in parsed.get("submissions", {}).items():
             feedback_summary.append({
                 "reviewer": review["model"],
                 "categories": submission_data.get("categories", {}),
                 "score": submission_data.get("score"),
             })
-            break  # Take first matching submission
+            break
     
     # Build refinement prompt
     feedback_text = "\n\n".join([
@@ -501,10 +475,11 @@ async def run_code_council(
     # Iterative refinement
     for iteration_num in range(1, max_iterations + 1):
         # Review current submissions
-        reviews = await review_code_structured(current_submissions, specification)
-        
-        # Store reviews
+        reviews, label_to_model = await review_code_structured(current_submissions, specification)
+
+        # Store reviews and label mapping
         iterations[-1]["reviews"] = reviews
+        iterations[-1]["label_to_model"] = label_to_model
         
         # Refine each submission
         refined_submissions = []
@@ -522,8 +497,9 @@ async def run_code_council(
         })
     
     # Final review
-    final_reviews = await review_code_structured(current_submissions, specification)
+    final_reviews, final_label_to_model = await review_code_structured(current_submissions, specification)
     iterations[-1]["reviews"] = final_reviews
+    iterations[-1]["label_to_model"] = final_label_to_model
     
     # Generate tests
     # Use best submission (first one for now, could be improved with ranking)

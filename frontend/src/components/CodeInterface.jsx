@@ -62,6 +62,7 @@ function CodeGenerationDisplay({ generation, selectedIteration, onSelectIteratio
           </h4>
           <CodeReview
             reviews={iterations[selectedIteration !== null ? selectedIteration : iterations.length - 1].reviews}
+            labelToModel={iterations[selectedIteration !== null ? selectedIteration : iterations.length - 1].label_to_model}
           />
         </div>
       )}

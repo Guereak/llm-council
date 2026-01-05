@@ -93,9 +93,24 @@ else:
             name="local",
             host="localhost",
             port=8080,  # node_server.py default port
-            models=["qwen3:4b", "gemma3:4b", "mistral"],
+            models=["gemma3:4b", "mistral"],
             is_chairman=True,
             chairman_model="mistral",
+            enabled=True,
+        ),
+        LLMNode(
+            name="Gabin",
+            host="10.1.181.9",
+            port=8080,
+            models=["gemma3:1b"],
+            is_chairman=False,
+            enabled=True,
+        ),
+        LLMNode(
+            name="Nathan",
+            host="10.1.184.150",
+            port=8080,
+            models=["llama3.2:1b"],
             enabled=True,
         ),
     ]

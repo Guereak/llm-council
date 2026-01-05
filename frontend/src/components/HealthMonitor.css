@@ -70,6 +70,31 @@
   border-radius: 4px;
   margin-bottom: 16px;
   border: 1px solid var(--error-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.error-dismiss {
+  background: none;
+  border: none;
+  color: var(--error-text);
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+  flex-shrink: 0;
+}
+
+.error-dismiss:hover {
+  opacity: 1;
 }
 
 .last-update {
@@ -426,6 +451,16 @@
 .add-node-btn:disabled {
   background: var(--text-tertiary);
   cursor: not-allowed;
+}
+
+.config-notice {
+  padding: 10px 14px;
+  background: var(--warning-bg);
+  color: var(--warning-text);
+  border-radius: 4px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  border-left: 3px solid var(--warning-text);
 }
 
 .node-actions {

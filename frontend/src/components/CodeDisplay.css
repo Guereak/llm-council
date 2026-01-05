@@ -2,8 +2,8 @@
   margin: 16px 0;
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  overflow: hidden;
   background: var(--code-bg);
+  max-width: 100%;
 }
 
 .code-display-header {
@@ -64,6 +64,21 @@
 
 .code-display-content {
   overflow-x: auto;
+  overflow-y: auto;
+  max-height: 600px;
+  border-radius: 0 0 8px 8px;
+}
+
+.code-display-content pre {
+  margin: 0 !important;
+  max-width: 100%;
+  overflow-x: auto !important;
+}
+
+.code-display-content code {
+  white-space: pre !important;
+  word-wrap: normal !important;
+  overflow-wrap: normal !important;
 }
 
 

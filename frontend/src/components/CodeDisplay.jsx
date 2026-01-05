@@ -78,8 +78,14 @@ export default function CodeDisplay({ code, language, model, node, filename }) {
             margin: 0,
             borderRadius: '4px',
             fontSize: '14px',
+            maxWidth: '100%',
           }}
           showLineNumbers
+          wrapLines={false}
+          wrapLongLines={false}
+          lineProps={{
+            style: { whiteSpace: 'pre' }
+          }}
         >
           {code}
         </SyntaxHighlighter>

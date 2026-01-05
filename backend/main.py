@@ -580,11 +580,12 @@ async def generate_code_stream(conversation_id: str, request: GenerateCodeReques
             for iteration_num in range(1, request.max_iterations + 1):
                 # Review current submissions
                 yield f"data: {json.dumps({'type': 'code_review_start', 'iteration': iteration_num})}\n\n"
-                reviews = await review_code_structured(current_submissions, request.specification)
-                yield f"data: {json.dumps({'type': 'code_review_complete', 'iteration': iteration_num, 'data': reviews})}\n\n"
+                reviews, label_to_model = await review_code_structured(current_submissions, request.specification)
+                yield f"data: {json.dumps({'type': 'code_review_complete', 'iteration': iteration_num, 'data': reviews, 'label_to_model': label_to_model})}\n\n"
 
-                # Store reviews
+                # Store reviews and label mapping
                 iterations[-1]["reviews"] = reviews
+                iterations[-1]["label_to_model"] = label_to_model
 
                 # Refine code
                 yield f"data: {json.dumps({'type': 'code_refinement_start', 'iteration': iteration_num})}\n\n"
@@ -605,9 +606,10 @@ async def generate_code_stream(conversation_id: str, request: GenerateCodeReques
 
             # Final review
             yield f"data: {json.dumps({'type': 'code_review_start', 'iteration': 'final'})}\n\n"
-            final_reviews = await review_code_structured(current_submissions, request.specification)
+            final_reviews, final_label_to_model = await review_code_structured(current_submissions, request.specification)
             iterations[-1]["reviews"] = final_reviews
-            yield f"data: {json.dumps({'type': 'code_review_complete', 'iteration': 'final', 'data': final_reviews})}\n\n"
+            iterations[-1]["label_to_model"] = final_label_to_model
+            yield f"data: {json.dumps({'type': 'code_review_complete', 'iteration': 'final', 'data': final_reviews, 'label_to_model': final_label_to_model})}\n\n"
 
             # Generate tests
             yield f"data: {json.dumps({'type': 'test_generation_start'})}\n\n"
