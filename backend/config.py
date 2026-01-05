@@ -87,7 +87,7 @@ if _nodes_json:
         COUNCIL_NODES = []
 else:
     # Default configuration - single localhost node
-    # Modify this for your distributed setup
+    # Changes made via API will only persist for the current session
     COUNCIL_NODES: List[LLMNode] = [
         LLMNode(
             name="local",
@@ -98,36 +98,77 @@ else:
             chairman_model="mistral",
             enabled=True,
         ),
-        LLMNode(
-            name="XPS",
-            host="192.168.1.22",
-            port=8080,
-            models=["phi3"],
-            enabled=True,
-        ),
-        # Example remote nodes (uncomment and configure for distributed setup):
-        # LLMNode(
-        #     name="gpu-server-1",
-        #     host="192.168.1.10",
-        #     port=11434,
-        #     models=["llama3.2", "gemma2"],
-        #     enabled=True,
-        # ),
-        # LLMNode(
-        #     name="gpu-server-2",
-        #     host="192.168.1.11",
-        #     port=11434,
-        #     models=["mistral", "phi3"],
-        #     is_chairman=True,
-        #     chairman_model="mistral",
-        #     enabled=True,
-        # ),
     ]
+
+
+def get_all_nodes() -> List[LLMNode]:
+    """
+    Get all nodes (for CRUD operations).
+    Returns the in-memory list of nodes.
+    """
+    return COUNCIL_NODES
 
 
 def get_enabled_nodes() -> List[LLMNode]:
     """Get all enabled nodes."""
     return [node for node in COUNCIL_NODES if node.enabled]
+
+
+def add_node(node: LLMNode) -> None:
+    """
+    Add a node to the in-memory list.
+    Changes are only valid for the current session.
+    """
+    global COUNCIL_NODES
+    # Check if node with same name exists
+    if any(n.name == node.name for n in COUNCIL_NODES):
+        raise ValueError(f"Node with name '{node.name}' already exists")
+    COUNCIL_NODES.append(node)
+
+
+def update_node(node_name: str, updated_node: LLMNode) -> None:
+    """
+    Update a node in the in-memory list.
+    Changes are only valid for the current session.
+    """
+    global COUNCIL_NODES
+    # Find the node to update
+    node_index = None
+    for i, n in enumerate(COUNCIL_NODES):
+        if n.name == node_name:
+            node_index = i
+            break
+    
+    if node_index is None:
+        raise ValueError(f"Node '{node_name}' not found")
+    
+    # Check for name conflicts if name is being changed
+    if updated_node.name != node_name:
+        if any(n.name == updated_node.name for n in COUNCIL_NODES):
+            raise ValueError(f"Node with name '{updated_node.name}' already exists")
+    
+    COUNCIL_NODES[node_index] = updated_node
+
+
+def remove_node(node_name: str) -> None:
+    """
+    Remove a node from the in-memory list.
+    Changes are only valid for the current session.
+    """
+    global COUNCIL_NODES
+    original_len = len(COUNCIL_NODES)
+    COUNCIL_NODES = [n for n in COUNCIL_NODES if n.name != node_name]
+    
+    if len(COUNCIL_NODES) == original_len:
+        raise ValueError(f"Node '{node_name}' not found")
+
+
+def get_node(node_name: str) -> Optional[LLMNode]:
+    """Get a specific node by name."""
+    for node in COUNCIL_NODES:
+        if node.name == node_name:
+            return node
+    return None
 
 
 def get_all_council_models() -> List[Dict[str, Any]]:
@@ -184,9 +225,6 @@ COUNCIL_MODELS = [m["model"] for m in get_all_council_models()]
 # Get chairman model
 _chairman = get_chairman_config()
 CHAIRMAN_MODEL = _chairman["model"] if _chairman else "mistral"
-
-# Legacy Ollama URL (for single-node setups)
-# OLLAMA_API_URL = os.getenv("OLLAMA_API_URL", "http://localhost:11434")
 
 # Data directory for conversation storage
 DATA_DIR = "data/conversations"

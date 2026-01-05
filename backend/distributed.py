@@ -362,13 +362,28 @@ class DistributedLLMClient:
             })
 
         chairman_config = get_chairman_config()
+        all_models = get_all_council_models()
+
+        # Determine overall cluster status
+        total_nodes = len(nodes)
+        if total_nodes == 0:
+            status = "error"
+        elif healthy_count == 0:
+            status = "error"
+        elif healthy_count < total_nodes:
+            status = "degraded"
+        else:
+            status = "ok"
 
         return {
-            "total_nodes": len(nodes),
+            "status": status,
+            "nodes_configured": total_nodes,
+            "models_available": len(all_models),
+            "total_nodes": total_nodes,  # Keep for backwards compatibility
             "healthy_nodes": healthy_count,
             "nodes": node_statuses,
             "chairman": chairman_config,
-            "all_models": get_all_council_models(),
+            "all_models": all_models,
         }
 
     async def close(self):

@@ -11,6 +11,19 @@ export default function HealthMonitor() {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [lastUpdate, setLastUpdate] = useState(null);
   const [error, setError] = useState(null);
+  const [showNodeModal, setShowNodeModal] = useState(false);
+  const [editingNode, setEditingNode] = useState(null);
+  const [nodeFormData, setNodeFormData] = useState({
+    name: '',
+    host: '',
+    port: 8080,
+    models: [],
+    is_chairman: false,
+    chairman_model: '',
+    enabled: true,
+    timeout: 120.0,
+    api_key: ''
+  });
 
   const loadHealthData = useCallback(async () => {
     try {
@@ -70,6 +83,94 @@ export default function HealthMonitor() {
 
   const getHealthStatusIcon = (isHealthy) => {
     return isHealthy ? '✓' : '✗';
+  };
+
+  const handleAddNode = () => {
+    setEditingNode(null);
+    setNodeFormData({
+      name: '',
+      host: '',
+      port: 8080,
+      models: [],
+      is_chairman: false,
+      chairman_model: '',
+      enabled: true,
+      timeout: 120.0,
+      api_key: ''
+    });
+    setShowNodeModal(true);
+  };
+
+  const handleEditNode = (node) => {
+    setEditingNode(node);
+    setNodeFormData({
+      name: node.name,
+      host: node.host,
+      port: node.port,
+      models: node.models || [],
+      is_chairman: node.is_chairman || false,
+      chairman_model: node.chairman_model || '',
+      enabled: node.enabled !== undefined ? node.enabled : true,
+      timeout: node.timeout || 120.0,
+      api_key: node.api_key || ''
+    });
+    setShowNodeModal(true);
+  };
+
+  const handleDeleteNode = async (nodeName) => {
+    if (!confirm(`Are you sure you want to delete node "${nodeName}"?`)) {
+      return;
+    }
+
+    try {
+      await api.deleteNode(nodeName);
+      await loadHealthData(); // Reload data after deletion
+    } catch (err) {
+      console.error('Failed to delete node:', err);
+      setError(err.message || 'Failed to delete node');
+    }
+  };
+
+  const handleSaveNode = async () => {
+    try {
+      setError(null);
+      
+      // Prepare node data
+      const nodeData = {
+        ...nodeFormData,
+        models: Array.isArray(nodeFormData.models) 
+          ? nodeFormData.models 
+          : nodeFormData.models.split(',').map(m => m.trim()).filter(m => m),
+        chairman_model: nodeFormData.chairman_model || null,
+        api_key: nodeFormData.api_key || null,
+      };
+
+      if (editingNode) {
+        // Update existing node
+        await api.updateNode(editingNode.name, nodeData);
+      } else {
+        // Create new node
+        await api.createNode(nodeData);
+      }
+
+      setShowNodeModal(false);
+      await loadHealthData(); // Reload data after save
+    } catch (err) {
+      console.error('Failed to save node:', err);
+      setError(err.message || 'Failed to save node');
+    }
+  };
+
+  const handleCancelNode = () => {
+    setShowNodeModal(false);
+    setEditingNode(null);
+  };
+
+  const handleFormChange = (field, value) => {
+    setNodeFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
   };
 
   return (
@@ -206,9 +307,18 @@ export default function HealthMonitor() {
       )}
 
       {/* Node Configuration */}
-      {nodes.length > 0 && (
-        <div className="nodes-config">
+      <div className="nodes-config">
+        <div className="nodes-config-header">
           <h3>Node Configuration</h3>
+          <button
+            className="add-node-btn"
+            onClick={handleAddNode}
+            disabled={isLoading}
+          >
+            + Add Node
+          </button>
+        </div>
+        {nodes.length > 0 ? (
           <div className="nodes-list">
             {nodes.map((node) => (
               <div key={node.name} className="node-config-card">
@@ -219,8 +329,24 @@ export default function HealthMonitor() {
                       <span className="chairman-badge">Chairman</span>
                     )}
                   </div>
-                  <div className={`node-enabled ${node.enabled ? 'enabled' : 'disabled'}`}>
-                    {node.enabled ? 'Enabled' : 'Disabled'}
+                  <div className="node-actions">
+                    <div className={`node-enabled ${node.enabled ? 'enabled' : 'disabled'}`}>
+                      {node.enabled ? 'Enabled' : 'Disabled'}
+                    </div>
+                    <button
+                      className="edit-node-btn"
+                      onClick={() => handleEditNode(node)}
+                      title="Edit node"
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      className="delete-node-btn"
+                      onClick={() => handleDeleteNode(node.name)}
+                      title="Delete node"
+                    >
+                      🗑️
+                    </button>
                   </div>
                 </div>
                 <div className="node-details">
@@ -256,8 +382,12 @@ export default function HealthMonitor() {
               </div>
             ))}
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="no-nodes">
+            No nodes configured. Click "Add Node" to get started.
+          </div>
+        )}
+      </div>
 
       {/* Models Overview */}
       {models && (
@@ -286,6 +416,115 @@ export default function HealthMonitor() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Node Edit/Create Modal */}
+      {showNodeModal && (
+        <div className="modal-overlay" onClick={handleCancelNode}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>{editingNode ? 'Edit Node' : 'Add New Node'}</h3>
+              <button className="modal-close" onClick={handleCancelNode}>×</button>
+            </div>
+            <div className="modal-body">
+              <div className="form-group">
+                <label>Name *</label>
+                <input
+                  type="text"
+                  value={nodeFormData.name}
+                  onChange={(e) => handleFormChange('name', e.target.value)}
+                  placeholder="e.g., local, gpu-server-1"
+                  disabled={!!editingNode}
+                />
+              </div>
+              <div className="form-group">
+                <label>Host *</label>
+                <input
+                  type="text"
+                  value={nodeFormData.host}
+                  onChange={(e) => handleFormChange('host', e.target.value)}
+                  placeholder="e.g., localhost, 192.168.1.10"
+                />
+              </div>
+              <div className="form-group">
+                <label>Port *</label>
+                <input
+                  type="number"
+                  value={nodeFormData.port}
+                  onChange={(e) => handleFormChange('port', parseInt(e.target.value))}
+                  placeholder="8080"
+                />
+              </div>
+              <div className="form-group">
+                <label>Models (comma-separated)</label>
+                <input
+                  type="text"
+                  value={Array.isArray(nodeFormData.models) ? nodeFormData.models.join(', ') : nodeFormData.models}
+                  onChange={(e) => handleFormChange('models', e.target.value)}
+                  placeholder="e.g., llama3.2, gemma2, mistral"
+                />
+              </div>
+              <div className="form-group">
+                <label>Timeout (seconds)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={nodeFormData.timeout}
+                  onChange={(e) => handleFormChange('timeout', parseFloat(e.target.value))}
+                  placeholder="120.0"
+                />
+              </div>
+              <div className="form-group checkbox-group">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={nodeFormData.enabled}
+                    onChange={(e) => handleFormChange('enabled', e.target.checked)}
+                  />
+                  Enabled
+                </label>
+              </div>
+              <div className="form-group checkbox-group">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={nodeFormData.is_chairman}
+                    onChange={(e) => handleFormChange('is_chairman', e.target.checked)}
+                  />
+                  Is Chairman Node
+                </label>
+              </div>
+              {nodeFormData.is_chairman && (
+                <div className="form-group">
+                  <label>Chairman Model</label>
+                  <input
+                    type="text"
+                    value={nodeFormData.chairman_model}
+                    onChange={(e) => handleFormChange('chairman_model', e.target.value)}
+                    placeholder="e.g., mistral"
+                  />
+                </div>
+              )}
+              <div className="form-group">
+                <label>API Key (optional)</label>
+                <input
+                  type="password"
+                  value={nodeFormData.api_key}
+                  onChange={(e) => handleFormChange('api_key', e.target.value)}
+                  placeholder="Optional API key for authentication"
+                />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn-secondary" onClick={handleCancelNode}>
+                Cancel
+              </button>
+              <button className="btn-primary" onClick={handleSaveNode}>
+                {editingNode ? 'Update' : 'Create'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

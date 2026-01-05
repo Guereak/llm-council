@@ -6,7 +6,7 @@
   font-size: 18px;
   font-weight: 600;
   margin-bottom: 16px;
-  color: var(--text-primary, #333);
+  color: var(--text-primary);
 }
 
 .final-tests-section {
@@ -17,7 +17,7 @@
   font-size: 16px;
   font-weight: 600;
   margin-bottom: 12px;
-  color: var(--text-primary, #333);
+  color: var(--text-primary);
 }
 
 .test-submissions-section {
@@ -28,7 +28,7 @@
   font-size: 16px;
   font-weight: 600;
   margin-bottom: 12px;
-  color: var(--text-primary, #333);
+  color: var(--text-primary);
 }
 
 .test-submissions-list {
@@ -38,10 +38,10 @@
 }
 
 .test-submission-card {
-  border: 1px solid var(--border-color, #e0e0e0);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   overflow: hidden;
-  background: var(--card-bg, #fff);
+  background: var(--bg-primary);
 }
 
 .test-submission-header {
@@ -49,71 +49,41 @@
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
-  background: var(--test-header-bg, #f5f5f5);
-  border-bottom: 1px solid var(--border-color, #e0e0e0);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .test-submission-model {
   font-weight: 600;
-  color: var(--text-primary, #333);
+  color: var(--text-primary);
 }
 
 .test-submission-node {
   font-size: 12px;
-  color: var(--text-secondary, #666);
+  color: var(--text-secondary);
   margin-left: 12px;
 }
 
 .test-toggle-btn {
   padding: 4px 12px;
-  border: 1px solid var(--border-color, #d0d0d0);
+  border: 1px solid var(--border-color);
   border-radius: 4px;
-  background: var(--button-bg, #fff);
-  color: var(--text-primary, #333);
+  background: var(--bg-primary);
+  color: var(--text-primary);
   cursor: pointer;
   font-size: 12px;
   transition: all 0.2s;
 }
 
 .test-toggle-btn:hover {
-  background: var(--button-hover-bg, #f5f5f5);
-  border-color: var(--border-hover-color, #b0b0b0);
+  background: var(--bg-hover);
+  border-color: var(--border-hover);
 }
 
 .test-submission-content {
   padding: 16px;
 }
 
-/* Dark mode support */
-[data-theme="dark"] .code-tests-title,
-[data-theme="dark"] .final-tests-title,
-[data-theme="dark"] .test-submissions-title {
-  color: var(--text-primary, #fff);
-}
-
-[data-theme="dark"] .test-submission-card {
-  background: var(--card-bg, #2d2d30);
-  border-color: var(--border-color, #444);
-}
-
-[data-theme="dark"] .test-submission-header {
-  background: var(--test-header-bg, #252526);
-  border-bottom-color: var(--border-color, #444);
-}
-
-[data-theme="dark"] .test-submission-model {
-  color: var(--text-primary, #fff);
-}
-
-[data-theme="dark"] .test-toggle-btn {
-  background: var(--button-bg, #2d2d30);
-  color: var(--text-primary, #fff);
-  border-color: var(--border-color, #444);
-}
-
-[data-theme="dark"] .test-toggle-btn:hover {
-  background: var(--button-hover-bg, #3d3d40);
-}
 
 
 

@@ -6,7 +6,7 @@
   font-size: 18px;
   font-weight: 600;
   margin-bottom: 16px;
-  color: var(--text-primary, #333);
+  color: var(--text-primary);
 }
 
 .code-review-list {
@@ -16,10 +16,10 @@
 }
 
 .review-card {
-  border: 1px solid var(--border-color, #e0e0e0);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 16px;
-  background: var(--card-bg, #fff);
+  background: var(--bg-primary);
 }
 
 .review-card-header {
@@ -28,17 +28,17 @@
   align-items: center;
   margin-bottom: 16px;
   padding-bottom: 12px;
-  border-bottom: 1px solid var(--border-color, #e0e0e0);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .review-reviewer {
   font-weight: 600;
-  color: var(--text-primary, #333);
+  color: var(--text-primary);
 }
 
 .review-node {
   font-size: 12px;
-  color: var(--text-secondary, #666);
+  color: var(--text-secondary);
 }
 
 .review-submissions {
@@ -49,7 +49,7 @@
 
 .review-submission {
   padding: 12px;
-  background: var(--submission-bg, #f9f9f9);
+  background: var(--bg-secondary);
   border-radius: 6px;
 }
 
@@ -62,16 +62,16 @@
 
 .review-label {
   font-weight: 600;
-  color: var(--text-primary, #333);
+  color: var(--text-primary);
 }
 
 .review-score {
   padding: 4px 8px;
-  background: var(--score-bg, #e3f2fd);
+  background: var(--tag-bg);
   border-radius: 4px;
   font-size: 12px;
   font-weight: 600;
-  color: var(--score-text, #1976d2);
+  color: var(--tag-text);
 }
 
 .review-categories {
@@ -82,8 +82,8 @@
 
 .review-category {
   padding: 10px;
-  background: var(--category-bg, #fff);
-  border-left: 3px solid var(--category-border, #2196f3);
+  background: var(--bg-tertiary);
+  border-left: 3px solid var(--accent-color);
   border-radius: 4px;
 }
 
@@ -100,12 +100,12 @@
 
 .review-category-name {
   font-weight: 600;
-  color: var(--text-primary, #333);
+  color: var(--text-primary);
   font-size: 14px;
 }
 
 .review-category-content {
-  color: var(--text-secondary, #666);
+  color: var(--text-secondary);
   font-size: 13px;
   line-height: 1.5;
 }
@@ -117,20 +117,20 @@
 .review-ranking {
   margin-top: 16px;
   padding-top: 16px;
-  border-top: 1px solid var(--border-color, #e0e0e0);
+  border-top: 1px solid var(--border-color);
 }
 
 .review-ranking-title {
   font-size: 14px;
   font-weight: 600;
   margin-bottom: 8px;
-  color: var(--text-primary, #333);
+  color: var(--text-primary);
 }
 
 .review-ranking-list {
   margin: 0;
   padding-left: 20px;
-  color: var(--text-primary, #333);
+  color: var(--text-primary);
 }
 
 .review-ranking-list li {
@@ -138,19 +138,19 @@
 }
 
 .review-ranking-model {
-  color: var(--text-secondary, #666);
+  color: var(--text-secondary);
   font-size: 12px;
 }
 
 .review-full-text {
   margin-top: 16px;
   padding-top: 16px;
-  border-top: 1px solid var(--border-color, #e0e0e0);
+  border-top: 1px solid var(--border-color);
 }
 
 .review-full-text summary {
   cursor: pointer;
-  color: var(--link-color, #2196f3);
+  color: var(--accent-color);
   font-size: 13px;
   user-select: none;
 }
@@ -162,63 +162,12 @@
 .review-full-content {
   margin-top: 12px;
   padding: 12px;
-  background: var(--full-text-bg, #f9f9f9);
+  background: var(--bg-secondary);
   border-radius: 4px;
   font-size: 13px;
-  color: var(--text-secondary, #666);
+  color: var(--text-secondary);
 }
 
-/* Dark mode support */
-[data-theme="dark"] .code-review-title {
-  color: var(--text-primary, #fff);
-}
-
-[data-theme="dark"] .review-card {
-  background: var(--card-bg, #2d2d30);
-  border-color: var(--border-color, #444);
-}
-
-[data-theme="dark"] .review-card-header {
-  border-bottom-color: var(--border-color, #444);
-}
-
-[data-theme="dark"] .review-reviewer {
-  color: var(--text-primary, #fff);
-}
-
-[data-theme="dark"] .review-submission {
-  background: var(--submission-bg, #252526);
-}
-
-[data-theme="dark"] .review-label {
-  color: var(--text-primary, #fff);
-}
-
-[data-theme="dark"] .review-score {
-  background: var(--score-bg, #2d2d30);
-  color: var(--score-text, #4fc3f7);
-}
-
-[data-theme="dark"] .review-category {
-  background: var(--category-bg, #252526);
-  border-left-color: var(--category-border, #4fc3f7);
-}
-
-[data-theme="dark"] .review-category-name {
-  color: var(--text-primary, #fff);
-}
-
-[data-theme="dark"] .review-ranking-title {
-  color: var(--text-primary, #fff);
-}
-
-[data-theme="dark"] .review-ranking-list {
-  color: var(--text-primary, #fff);
-}
-
-[data-theme="dark"] .review-full-content {
-  background: var(--full-text-bg, #252526);
-}
 
 
 
