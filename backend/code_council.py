@@ -34,13 +34,11 @@ Provide ONLY the code without any explanations or markdown formatting. Start dir
 
     messages = [{"role": "user", "content": code_prompt}]
     
-    # Get client and query the models
     client = get_distributed_client()
     models_config = get_all_council_models()
     
     responses = await client.query_models_parallel(models_config, messages)
     
-    # Results formatting
     code_results = []
     for model, response in responses.items():
         if response is not None:
@@ -65,15 +63,13 @@ async def review_code_structured(
 ) -> Tuple[List[Dict[str, Any]], Dict[str, str]]:
     """ Stage 2: Each model reviews code with structured feedback """
     # Create anonymized labels for code submissions
-    labels = [chr(65 + i) for i in range(len(code_submissions))]  # A, B, C, ...
+    labels = [chr(65 + i) for i in range(len(code_submissions))]  # uppercase letters
 
-    # Create label to model mapping for deobfuscation
     label_to_model = {
         label: submission['model']
         for label, submission in zip(labels, code_submissions)
     }
 
-    # Build code review prompt
     code_texts = "\n\n".join([
         f"Code Submission {label}:\n```\n{submission['code']}\n```"
         for label, submission in zip(labels, code_submissions)
@@ -144,7 +140,6 @@ def parse_structured_review(review_text: str, labels: List[str]) -> Dict[str, An
         "ranking": []
     }
     
-    # Extract reviews for each submission
     for label in labels:
         submission_key = f"Code Submission {label}"
         if submission_key in review_text:
@@ -153,7 +148,6 @@ def parse_structured_review(review_text: str, labels: List[str]) -> Dict[str, An
             if match:
                 submission_review = match.group(1).strip()
                 
-                # Extract categories
                 categories = {}
                 for category in ["Bugs", "Style", "Performance", "Security", "Best Practices"]:
                     pattern = rf"{category}:\s*(.*?)(?=\n-|$)"
@@ -161,7 +155,6 @@ def parse_structured_review(review_text: str, labels: List[str]) -> Dict[str, An
                     if cat_match:
                         categories[category.lower()] = cat_match.group(1).strip()
                 
-                # Extract overall score
                 score_match = re.search(r"Overall Score:\s*(\d+)", submission_review)
                 score = int(score_match.group(1)) if score_match else None
                 
@@ -171,7 +164,6 @@ def parse_structured_review(review_text: str, labels: List[str]) -> Dict[str, An
                     "full_text": submission_review
                 }
     
-    # Extract ranking
     if "FINAL RANKING:" in review_text:
         ranking_section = review_text.split("FINAL RANKING:")[1]
         ranking_matches = re.findall(r'Code Submission ([A-Z])', ranking_section)
@@ -198,13 +190,11 @@ async def refine_code(
     Returns:
         Refined code submission dict
     """
-    # Collect all feedback for this submission
     feedback_summary = []
     for review in reviews:
         parsed = review.get("parsed_review", {})
         submission_label = None
         
-        # Find which label corresponds to this submission
         for label, submission_data in parsed.get("submissions", {}).items():
             feedback_summary.append({
                 "reviewer": review["model"],
@@ -213,12 +203,11 @@ async def refine_code(
             })
             break
     
-    # Build refinement prompt
     feedback_text = "\n\n".join([
         f"Reviewer: {fb['reviewer']}\n"
         f"Score: {fb['score']}\n"
         f"Feedback:\n" + "\n".join([f"- {k}: {v}" for k, v in fb['categories'].items()])
-        for fb in feedback_summary[:3]  # Limit to top 3 reviews
+        for fb in feedback_summary[:3]  # top 3 reviews
     ])
     
     refinement_prompt = f"""You are refining code based on peer review feedback.
@@ -244,7 +233,6 @@ Provide ONLY the refined code without explanations or markdown formatting."""
 
     messages = [{"role": "user", "content": refinement_prompt}]
     
-    # Use the same model that generated the original code
     client = get_distributed_client()
     response = await client.query_model(
         model=code_submission['model'],
@@ -307,18 +295,15 @@ Provide ONLY the test code without explanations or markdown formatting."""
 
     messages = [{"role": "user", "content": test_prompt}]
     
-    # Get tests from all council models
     client = get_distributed_client()
     models_config = get_all_council_models()
     
     responses = await client.query_models_parallel(models_config, messages)
     
-    # Format results
     test_results = []
     for model, response in responses.items():
         if response is not None:
             test_code = response.get('content', '').strip()
-            # Remove markdown code blocks if present
             test_code = re.sub(r'^```[\w]*\n', '', test_code, flags=re.MULTILINE)
             test_code = re.sub(r'\n```$', '', test_code, flags=re.MULTILINE)
             test_code = test_code.strip()
@@ -350,7 +335,6 @@ async def synthesize_final_code(
     Returns:
         Final synthesized code and tests
     """
-    # Build synthesis prompt
     code_texts = "\n\n".join([
         f"Code from {sub['model']}:\n```\n{sub['code']}\n```"
         for sub in code_submissions
@@ -389,7 +373,6 @@ Do not include markdown code blocks, just the code directly."""
 
     messages = [{"role": "user", "content": synthesis_prompt}]
     
-    # Query chairman
     client = get_distributed_client()
     response = await client.query_chairman(messages)
     
@@ -404,7 +387,6 @@ Do not include markdown code blocks, just the code directly."""
     
     synthesis_text = response.get('content', '')
     
-    # Parse final code and tests
     final_code = ""
     final_tests = ""
     
@@ -474,10 +456,8 @@ async def run_code_council(
     
     # Iterative refinement
     for iteration_num in range(1, max_iterations + 1):
-        # Review current submissions
         reviews, label_to_model = await review_code_structured(current_submissions, specification)
 
-        # Store reviews and label mapping
         iterations[-1]["reviews"] = reviews
         iterations[-1]["label_to_model"] = label_to_model
         
@@ -489,7 +469,6 @@ async def run_code_council(
         
         current_submissions = refined_submissions
         
-        # Store iteration
         iterations.append({
             "iteration": iteration_num,
             "code_submissions": current_submissions.copy(),
@@ -502,7 +481,6 @@ async def run_code_council(
     iterations[-1]["label_to_model"] = final_label_to_model
     
     # Generate tests
-    # Use best submission (first one for now, could be improved with ranking)
     best_code = current_submissions[0]["code"]
     tests = await generate_tests(best_code, specification, language)
     
