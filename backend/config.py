@@ -100,7 +100,7 @@ else:
         ),
         LLMNode(
             name="Gabin",
-            host="10.1.181.9",
+            host="172.20.10.4",
             port=8080,
             models=["gemma3:1b"],
             is_chairman=False,
@@ -111,6 +111,13 @@ else:
             host="10.1.184.150",
             port=8080,
             models=["llama3.2:1b"],
+            enabled=True,
+        ),
+        LLMNode(
+            name="XPS",
+            host="10.1.172.116",
+            port=8080,
+            models=["phi3"],
             enabled=True,
         ),
     ]
@@ -259,4 +266,4 @@ MAX_RETRIES = int(os.getenv("MAX_RETRIES", "2"))
 RETRY_DELAY = float(os.getenv("RETRY_DELAY", "1.0"))
 
 # Enable verbose logging for distributed operations
-DISTRIBUTED_DEBUG = os.getenv("DISTRIBUTED_DEBUG", "false").lower() == "true"
+DISTRIBUTED_DEBUG = os.getenv("DISTRIBUTED_DEBUG", "true").lower() == "true"
