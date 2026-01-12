@@ -165,13 +165,17 @@ async def health():
     """Detailed health check."""
     try:
         # Check Ollama connectivity
-        models = ollama_client.list()
+        response = ollama_client.list()
         ollama_status = "ok"
-        available_models = [m.get('name', '').split(':')[0] for m in models.get('models', [])]
+        # Handle both old dict format and new object format from Ollama library
+        if hasattr(response, 'models'):
+            available_models = [m.model.split(':')[0] for m in response.models]
+        else:
+            available_models = [m.get('name', '').split(':')[0] for m in response.get('models', [])]
     except Exception as e:
         ollama_status = f"error: {e}"
         available_models = []
-    
+
     return {
         "status": "ok" if ollama_status == "ok" else "degraded",
         "node": NODE_NAME,
